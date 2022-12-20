@@ -1,14 +1,50 @@
-import React,{useState} from "react";
+import React,{useRef, useState,useEffect} from "react";
 import { nanoid } from "nanoid"; 
 import Todo from "./components/Todo";
 import Form from "./components/Form";
 import FilterButton from "./components/FilterButton";
+import  usePrevious from "./usePreviousCommonSource";
+const filterMap={
+  all:()=>true,
+  active:(task)=>!task.completed,
+  completed:(task)=>task.completed
+}
+const filterKeys=Object.keys(filterMap);
+// function usePrevious(value) {
+//   const ref = useRef();
+//   useEffect(() => {
+//     ref.current = value;
+//   });
+//   return ref.current;
+// }
+
 function App(props) {
+  
+  const listHeadingRef=useRef(null);
+  const [activeFilter,setActiveFilter]=useState("all");
+
+
+
   console.log("in app component:"+{props});
   const [tasks,setTasks]=useState(props.tasks);
-  const taskList=tasks?.map((task) => <Todo name={task.name} completed={task.completed}
-  id={task.id} key={task.id} toggleTaskCompleted={toggleTaskCompleted} deleteTask={deleteTask}
-  editTask={editTask}/>);
+  const prevTaskLength=usePrevious(tasks.length);
+
+  const taskList=tasks?.filter(filterMap[activeFilter]).map((task) => 
+ ( <Todo name={task.name} 
+  completed={task.completed}
+  id={task.id} key={task.id} 
+  toggleTaskCompleted={toggleTaskCompleted}
+   deleteTask={deleteTask}
+  editTask={editTask}/>))
+  const filterList=filterKeys.map((name)=><FilterButton name={name} key={name} 
+  setActiveFilter={setActiveFilter} isPressed={name===activeFilter}/>)
+  console.log(filterKeys);
+
+  useEffect(() => {
+    if (tasks.length - prevTaskLength === -1) {
+      listHeadingRef.current.focus();
+    }
+  }, [tasks.length, prevTaskLength]);
   function addTask(name)
   {
     const newTask={ id: `todo-${nanoid()}`, name, completed: false };
@@ -36,7 +72,7 @@ function App(props) {
   function editTask(id,name)
   {
       const modifiedTasks=tasks.map((task)=>{
-       if(task.id==id)
+       if(task.id===id)
        {
         return {...task,name:name};
        }
@@ -52,11 +88,9 @@ const headingText = `${taskList.length} ${tasksNoun} remaining`;
   <h1>TodoMatic</h1>
   <Form addTask={addTask}/>
   <div className="filters btn-group stack-exception">
-    <FilterButton/>
-    <FilterButton/>
-    <FilterButton/>
+    {filterList}
   </div>
-  <h2 id="list-heading">
+  <h2 id="list-heading" ref={listHeadingRef} tabIndex="-1">
   {headingText}
   </h2>
   <ul
